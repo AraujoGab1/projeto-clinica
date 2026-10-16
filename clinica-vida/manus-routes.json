@@ -1,0 +1,1 @@
+{"routes":[{"path":"/","title":"Início"},{"path":"/login","title":"Login"},{"path":"/painel","title":"Painel"},{"path":"/usuarios","title":"Usuários"},{"path":"/medicos","title":"Médicos"},{"path":"/agendamentos","title":"Agendamentos"}]}

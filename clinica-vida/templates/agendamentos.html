@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agendamentos | Clínica Vida</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/agendamentos.css') }}">
+</head>
+<body>
+  <nav class="navbar" aria-label="Navegação principal">
+    <a class="brand" href="/painel" aria-label="Clínica Vida — início">
+      <span class="brand-mark" aria-hidden="true">+</span>
+      <span>Clínica <strong>Vida</strong></span>
+    </a>
+    <div class="nav-links">
+      <a href="/painel">Início</a>
+      <a href="/usuarios">Usuários</a>
+      <a href="/medicos">Médicos</a>
+      <a href="/agendamentos" class="active" aria-current="page">Agendamentos</a>
+    </div>
+    <a href="/login" class="btn-sair">Sair</a>
+  </nav>
+
+  <main class="page-shell">
+    <header class="page-heading">
+      <div>
+        <p class="eyebrow">CLÍNICA VIDA <span>/</span> GESTÃO</p>
+        <h1>Agenda de consultas</h1>
+        <p class="subtitle">Organize os horários e acompanhe os atendimentos da clínica.</p>
+      </div>
+      <div class="date-chip" aria-label="Hoje">
+        <span class="date-dot" aria-hidden="true"></span>
+        <span>Agenda atualizada</span>
+      </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <section class="flash-stack" aria-live="polite">
+          {% for categoria, mensagem in messages %}
+            <div class="flash flash-{{ categoria }}" role="alert">
+              <span class="flash-icon" aria-hidden="true">{{ '!' if categoria == 'erro' else '✓' }}</span>
+              <span>{{ mensagem }}</span>
+            </div>
+          {% endfor %}
+        </section>
+      {% endif %}
+    {% endwith %}
+
+    <section class="summary-row" aria-label="Resumo da agenda">
+      <div class="summary-card">
+        <span class="summary-label">Consultas cadastradas</span>
+        <strong>{{ agendamentos|length }}</strong>
+        <span class="summary-note">na agenda</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-label">Pacientes disponíveis</span>
+        <strong>{{ pacientes|length }}</strong>
+        <span class="summary-note">para agendamento</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-label">Profissionais disponíveis</span>
+        <strong>{{ medicos|length }}</strong>
+        <span class="summary-note">na equipe clínica</span>
+      </div>
+    </section>
+
+    <section class="panel form-panel" aria-labelledby="form-title">
+      <div class="section-heading">
+        <div class="section-icon" aria-hidden="true">{% if editing %}↻{% else %}+{% endif %}</div>
+        <div>
+          <p class="section-kicker">{{ 'ALTERAÇÃO' if editing else 'NOVO HORÁRIO' }}</p>
+          <h2 id="form-title">{{ 'Editar agendamento' if editing else 'Agendar uma consulta' }}</h2>
+        </div>
+      </div>
+
+      {% if not pacientes or not medicos %}
+        <div class="empty-options">
+          Para agendar, cadastre ao menos um paciente e um médico no sistema.
+        </div>
+      {% endif %}
+
+      <form class="appointment-form" method="post"
+        action="{{ url_for('salvar_edicao_agendamento', id_agendamento=editing['id_agendamento']) if editing else url_for('agendamentos') }}">
+        <div class="field">
+          <label for="id_paciente">Paciente <span class="required">*</span></label>
+          <select id="id_paciente" name="id_paciente" required {% if not pacientes %}disabled{% endif %}>
+            <option value="">Selecione o paciente</option>
+            {% for paciente in pacientes %}
+              <option value="{{ paciente['id_paciente'] }}" {% if valores.id_paciente|string == paciente['id_paciente']|string %}selected{% endif %}>
+                {{ paciente['nome'] }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="id_medico">Médico <span class="required">*</span></label>
+          <select id="id_medico" name="id_medico" required {% if not medicos %}disabled{% endif %}>
+            <option value="">Selecione o médico</option>
+            {% for medico in medicos %}
+              <option value="{{ medico['id_medico'] }}" {% if valores.id_medico|string == medico['id_medico']|string %}selected{% endif %}>
+                {{ medico['nome'] }}{% if medico['especialidade'] %} — {{ medico['especialidade'] }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="data">Data <span class="required">*</span></label>
+          <input id="data" name="data" type="date" value="{{ valores.data }}" required>
+        </div>
+        <div class="field">
+          <label for="horario">Horário <span class="required">*</span></label>
+          <input id="horario" name="horario" type="time" value="{{ valores.horario }}" required>
+        </div>
+        <div class="field field-wide">
+          <label for="descricao">Descrição <span class="required">*</span></label>
+          <input id="descricao" name="descricao" type="text" maxlength="500" value="{{ valores.descricao }}"
+            placeholder="Ex.: consulta de rotina, retorno..." required>
+        </div>
+        <div class="form-actions field-wide">
+          <button class="button button-primary" type="submit" {% if not pacientes or not medicos %}disabled{% endif %}>
+            <span aria-hidden="true">{% if editing %}✓{% else %}+{% endif %}</span>
+            {{ 'Salvar alterações' if editing else 'Agendar' }}
+          </button>
+          {% if editing %}
+            <a class="button button-quiet" href="{{ url_for('agendamentos') }}">Cancelar edição</a>
+          {% endif %}
+          <span class="form-hint">Os campos com <span class="required">*</span> são obrigatórios.</span>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel list-panel" aria-labelledby="list-title">
+      <div class="list-heading">
+        <div>
+          <p class="section-kicker">CONSULTAS</p>
+          <h2 id="list-title">Agendamentos registrados</h2>
+        </div>
+        <span class="count-pill">{{ agendamentos|length }} {{ 'consulta' if agendamentos|length == 1 else 'consultas' }}</span>
+      </div>
+
+      {% if agendamentos %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Paciente</th>
+                <th>Médico</th>
+                <th>Data</th>
+                <th>Horário</th>
+                <th>Descrição</th>
+                <th>Status</th>
+                <th class="actions-heading">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for agendamento in agendamentos %}
+                <tr>
+                  <td data-label="Paciente"><strong>{{ agendamento.paciente_nome or 'Paciente' }}</strong></td>
+                  <td data-label="Médico">
+                    <strong>{{ agendamento.medico_nome or 'Médico' }}</strong>
+                    {% if agendamento.especialidade %}<small>{{ agendamento.especialidade }}</small>{% endif %}
+                  </td>
+                  <td data-label="Data">{{ agendamento.data_formatada }}</td>
+                  <td data-label="Horário"><span class="time-value">{{ agendamento.hora_formatada }}</span></td>
+                  <td data-label="Descrição" class="description-cell">{{ agendamento.motivo or '—' }}</td>
+                  <td data-label="Status"><span class="status-pill status-{{ (agendamento.status or 'Agendado')|lower }}">{{ agendamento.status or 'Agendado' }}</span></td>
+                  <td data-label="Ações" class="row-actions">
+                    <a class="action-link action-edit" href="{{ url_for('agendamentos', editar=agendamento.id_agendamento) }}" aria-label="Editar consulta de {{ agendamento.paciente_nome or 'paciente' }}">Editar</a>
+                    <form method="post" action="{{ url_for('cancelar_agendamento', id_agendamento=agendamento.id_agendamento) }}" onsubmit="return confirm('Confirma o cancelamento deste agendamento?');">
+                      <button class="action-link action-cancel" type="submit">Cancelar</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <span class="empty-mark" aria-hidden="true">+</span>
+          <h3>Nenhuma consulta na agenda</h3>
+          <p>Use o formulário acima para cadastrar o primeiro horário.</p>
+        </div>
+      {% endif %}
+    </section>
+
+    <footer class="page-footer">
+      <span>Clínica Vida</span>
+      <span>Gestão de consultas</span>
+    </footer>
+  </main>
+</body>
+</html>
